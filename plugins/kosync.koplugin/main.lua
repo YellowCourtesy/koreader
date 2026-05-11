@@ -41,7 +41,8 @@ local SYNC_STRATEGY = {
 
 local CHECKSUM_METHOD = {
     BINARY = 0,
-    FILENAME = 1
+    FILENAME = 1,
+    FILENAME_NO_EXT = 2,
 }
 
 -- Debounce push/pull attempts
@@ -403,12 +404,21 @@ If set to 0, updating progress based on page turns will be disabled.]]),
                         end,
                     },
                     {
-                        text = _("Filename. Files with matching names will be kept in sync."),
+                        text = _("Filename. Files with matching names (including extension) will be kept in sync."),
                         checked_func = function()
                             return self.settings.checksum_method == CHECKSUM_METHOD.FILENAME
                         end,
                         callback = function()
                             self:setChecksumMethod(CHECKSUM_METHOD.FILENAME)
+                        end,
+                    },
+                    {
+                        text = _("Filename without extension. Files with matching names (ignoring extension) will be kept in sync."),
+                        checked_func = function()
+                            return self.settings.checksum_method == CHECKSUM_METHOD.FILENAME_NO_EXT
+                        end,
+                        callback = function()
+                            self:setChecksumMethod(CHECKSUM_METHOD.FILENAME_NO_EXT)
                         end,
                     },
                 }
@@ -630,6 +640,8 @@ end
 function KOSync:getDocumentDigest()
     if self.settings.checksum_method == CHECKSUM_METHOD.FILENAME then
         return self:getFileNameDigest()
+    elseif self.settings.checksum_method == CHECKSUM_METHOD.FILENAME_NO_EXT then
+        return self:getFileNameNoExtDigest()
     else
         return self:getFileDigest()
     end
@@ -643,6 +655,16 @@ function KOSync:getFileNameDigest()
     local file_name = self:getFileName()
     if not file_name then return end
     return md5(file_name)
+end
+
+function KOSync:getFileNameNoExtDigest()
+    local file_name = self:getFileName()
+    if not file_name then return end
+    local name_without_ext = util.splitFileNameSuffix(file_name)
+    if not name_without_ext or name_without_ext == "" then
+        name_without_ext = file_name
+    end
+    return md5(name_without_ext)
 end
 
 function KOSync:getFileName()
