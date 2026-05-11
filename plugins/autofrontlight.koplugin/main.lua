@@ -53,6 +53,13 @@ function AutoFrontlight:_schedule(settings_id)
 end
 
 function AutoFrontlight:_action()
+    -- Bail out if suspend has been signaled but the backgroundrunner
+    -- hasn't yet stopped its current pass. Prevents racing the suspend path.
+    if PluginShare.stopBackgroundRunner then
+        logger.dbg("AutoFrontlight:_action() skipped, suspend in progress")
+        return
+    end
+
     local current_level = Device:ambientBrightnessLevel()
     if self.last_brightness == current_level then return end
     logger.dbg("AutoFrontlight: ambient bucket ", current_level)
@@ -144,6 +151,14 @@ end
 
 function AutoFrontlightWidget:onFlushSettings()
     AutoFrontlight:onFlushSettings()
+end
+
+function AutoFrontlightWidget:onSuspend()
+    if AutoFrontlight.enabled then
+        logger.dbg("AutoFrontlight: forcing frontlight off on suspend")
+        Device:getPowerDevice():turnOffFrontlight()
+        AutoFrontlight.last_brightness = -1  -- reset so it re-evaluates on resume
+    end
 end
 
 return AutoFrontlightWidget
